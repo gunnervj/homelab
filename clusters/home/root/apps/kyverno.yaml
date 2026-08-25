@@ -14,7 +14,7 @@ spec:
       helm:
         valueFiles:
           - $values/clusters/home/infrastructure/kyverno/values.yaml
-    - repoURL: https://github.com/YOURUSER/homelab.git
+    - repoURL: https://github.com/gunnervj/homelab.git
       targetRevision: main
       ref: values
   destination:
