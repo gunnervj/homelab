@@ -1,0 +1,16 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: require-explicit-tag
+      match:
+        any: [{ resources: { kinds: [Pod] } }]
+      validate:
+        message: "Use an explicit image tag, not :latest — it makes rollbacks impossible."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"

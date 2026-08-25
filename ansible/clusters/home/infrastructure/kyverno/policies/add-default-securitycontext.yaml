@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-default-securitycontext
+spec:
+  rules:
+    - name: mutate-runasnonroot
+      match:
+        any: [{ resources: { kinds: [Pod] } }]
+      exclude:
+        any:
+          - resources:
+              namespaces: [kube-system, longhorn-system, kyverno, monitoring]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            securityContext:
+              +(runAsNonRoot): true
+              +(seccompProfile):
+                type: RuntimeDefault

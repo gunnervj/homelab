@@ -1,0 +1,15 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-longhorn-storageclass
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: explicit-storageclass
+      match:
+        any: [{ resources: { kinds: [PersistentVolumeClaim] } }]
+      validate:
+        message: "Set storageClassName explicitly — don't rely on the default."
+        pattern:
+          spec:
+            storageClassName: "?*"
