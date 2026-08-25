@@ -1,2 +1,59 @@
 ---
-# Filled in during Phase 4, once Longhorn is actually being installed.
+- name: Install Longhorn dependencies
+  ansible.builtin.apt:
+    name: [open-iscsi, nfs-common, util-linux, cryptsetup, jq]
+    state: present
+    update_cache: true
+
+- name: Enable iscsid
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: true
+    state: started
+
+# package_facts must be gathered explicitly — it is NOT part of Ansible's
+# default fact-gathering at play start. Without this task, the "when" guard
+# on the next task silently evaluates false on every host (a skip, not a
+# failure, so it produces no error and no warning), and the multipath
+# blacklist below never gets written even though longhornctl later reports
+# multipathd as running. This is the actual root cause behind the
+# [MultipathService] warning showing up after a supposedly clean run —
+# worth checking with `cat /etc/multipath.conf` on a node if that warning
+# ever seems to persist across a re-run.
+- name: Gather installed package facts
+  ansible.builtin.package_facts:
+    manager: apt
+
+# multipathd claims Longhorn's block devices and causes volumes to fail
+# attaching with "device is busy" — this is the #1 Longhorn install failure.
+- name: Blacklist Longhorn devices from multipath
+  ansible.builtin.copy:
+    dest: /etc/multipath.conf
+    mode: "0644"
+    content: |
+      blacklist {
+          devnode "^sd[a-z0-9]+"
+      }
+  notify: restart multipathd
+  when: ansible_facts.packages['multipath-tools'] is defined
+
+# Longhorn's preflight checker (longhornctl) expects these kernel modules
+# loaded on every node — nfs for RWX volumes and NFS backup targets,
+# dm_crypt for LUKS-encrypted Longhorn volumes. Neither loads by default
+# on a stock Ubuntu Server install, and a missing module here is reported
+# as a hard error by longhornctl check preflight, not just a warning.
+- name: Load kernel modules required by Longhorn
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nfs
+    - dm_crypt
+
+- name: Persist Longhorn kernel modules across reboot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/longhorn.conf
+    content: |
+      nfs
+      dm_crypt
+    mode: "0644"
