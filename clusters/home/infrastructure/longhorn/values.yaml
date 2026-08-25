@@ -1,0 +1,22 @@
+defaultSettings:
+  defaultReplicaCount: 2
+  defaultDataPath: /var/lib/longhorn
+  replicaSoftAntiAffinity: false        # never put both replicas on one node
+  storageOverProvisioningPercentage: 100
+  storageMinimalAvailablePercentage: 15
+  # Give volumes a long grace period — your nodes reboot often and you don't
+  # want a 10-minute maintenance window triggering full replica rebuilds.
+  nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+  replicaReplenishmentWaitInterval: 1800
+  concurrentReplicaRebuildPerNodeLimit: 1
+  backupTarget: "s3://longhorn-backups@us-east-1/"
+  backupTargetCredentialSecret: minio-backup-secret
+
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 2
+  reclaimPolicy: Retain                 # don't delete data when a PVC is deleted
+
+ingress:
+  enabled: false    # the chart only knows how to create a classic Ingress —
+                     # route it with an HTTPRoute below instead
