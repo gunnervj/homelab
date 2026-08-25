@@ -1,0 +1,89 @@
+---
+- name: Check whether k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+# Using a config file rather than a giant INSTALL_K3S_EXEC string means
+# changing a flag later is a clean diff, not a reinstall.
+- name: Write k3s server config (primary node)
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+    content: |
+      cluster-init: true
+      node-name: "{{ inventory_hostname }}"
+      node-ip: "{{ ansible_host }}"
+      tls-san:
+        - "{{ api_vip }}"
+        - "{{ inventory_hostname }}.{{ cluster_domain }}"
+        - "{{ ansible_host }}"
+      disable:
+        - traefik
+        - servicelb
+        - local-storage
+      write-kubeconfig-mode: "0600"
+      secrets-encryption: true
+      etcd-snapshot-schedule-cron: "0 3 * * *"
+      etcd-snapshot-retention: 10
+      kube-controller-manager-arg:
+        - "node-monitor-period=4s"
+        - "node-monitor-grace-period=16s"
+      kubelet-arg:
+        - "node-status-update-frequency=4s"
+  when: node_role == "primary"
+
+- name: Write k3s server config (joining nodes)
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+    content: |
+      server: "https://{{ hostvars['k3s-1'].ansible_host }}:6443"
+      token: "{{ k3s_token }}"
+      node-name: "{{ inventory_hostname }}"
+      node-ip: "{{ ansible_host }}"
+      tls-san:
+        - "{{ api_vip }}"
+        - "{{ inventory_hostname }}.{{ cluster_domain }}"
+        - "{{ ansible_host }}"
+      disable:
+        - traefik
+        - servicelb
+        - local-storage
+      write-kubeconfig-mode: "0600"
+      secrets-encryption: true
+      kube-controller-manager-arg:
+        - "node-monitor-period=4s"
+        - "node-monitor-grace-period=16s"
+      kubelet-arg:
+        - "node-status-update-frequency=4s"
+  when: node_role == "secondary"
+
+- name: Install k3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | \
+      INSTALL_K3S_VERSION="{{ k3s_version }}" \
+      INSTALL_K3S_EXEC="server" sh -
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Ensure k3s is enabled and started
+  ansible.builtin.systemd:
+    name: k3s
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for the node API to respond
+  ansible.builtin.shell: k3s kubectl get --raw='/readyz'
+  register: readyz
+  until: readyz.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false

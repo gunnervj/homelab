@@ -1,0 +1,14 @@
+---
+- name: Harden sshd
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config.d/99-hardening.conf
+    create: true
+    mode: "0644"
+    regexp: "^{{ item.key }}"
+    line: "{{ item.key }} {{ item.value }}"
+  loop:
+    - { key: PasswordAuthentication,  value: "no" }
+    - { key: PermitRootLogin,         value: "no" }
+    - { key: KbdInteractiveAuthentication, value: "no" }
+    - { key: X11Forwarding,           value: "no" }
+  notify: restart sshd

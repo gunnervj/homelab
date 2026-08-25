@@ -1,0 +1,31 @@
+---
+all:
+  vars:
+    ansible_user: vjnair
+    k3s_version: "v1.36.3+k3s1"
+    cluster_domain: "naadroid.dev"
+    api_vip: "192.168.0.200"
+    net_gateway: "192.168.0.1"
+    net_dns: "192.168.0.100"
+    gpu_power_limit_watts: 200 
+  children:
+    k3s_servers:
+      hosts:
+        k3s-1:
+          ansible_host: 192.168.0.11
+          node_role: primary
+          net_interface: enp0s31f6
+        k3s-2:
+          ansible_host: 192.168.0.12
+          node_role: secondary
+          net_interface: enp0s31f6
+        k3s-3:
+          ansible_host: 192.168.0.13
+          node_role: secondary
+          net_interface: eno1
+    laptops:
+      hosts:
+        k3s-2:
+    gpu_tower:
+      hosts:
+        k3s-3:

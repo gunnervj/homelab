@@ -1,0 +1,83 @@
+---
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Populate /etc/hosts with all cluster nodes
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "\\s{{ item }}$"
+    line: "{{ hostvars[item].ansible_host }} {{ item }}"
+    state: present
+  loop: "{{ groups['k3s_servers'] }}"
+
+- name: Disable swap immediately
+  ansible.builtin.command: swapoff -a
+  when: ansible_facts.swaptotal_mb > 0
+  changed_when: ansible_facts.swaptotal_mb > 0
+
+- name: Remove swap from /etc/fstab permanently
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: Disable the systemd swap unit (Ubuntu 24.04 uses a swapfile unit)
+  ansible.builtin.systemd:
+    name: swap.target
+    enabled: false
+    masked: true
+  failed_when: false
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - vim
+      - htop
+      - iotop
+      - net-tools
+      - jq
+      - chrony
+      - unattended-upgrades
+    state: present
+    update_cache: true
+
+- name: Ensure time sync is running (etcd is intolerant of clock drift)
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started
+
+- name: Load kernel modules required by the CNI
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Persist kernel modules across reboot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+    mode: "0644"
+
+- name: Set required sysctls
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-kubernetes.conf
+    reload: true
+  loop:
+    - { key: net.bridge.bridge-nf-call-iptables,  value: "1" }
+    - { key: net.bridge.bridge-nf-call-ip6tables, value: "1" }
+    - { key: net.ipv4.ip_forward,                 value: "1" }
+    - { key: fs.inotify.max_user_instances,       value: "8192" }
+    - { key: fs.inotify.max_user_watches,         value: "524288" }
+    - { key: vm.max_map_count,                    value: "262144" }
+
+- name: Configure passwordless sudo for kubeconfig access
+  ansible.builtin.include_tasks: sudoers.yml

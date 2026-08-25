@@ -1,0 +1,9 @@
+- name: Allow ansible_user passwordless sudo for all commands
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ ansible_user }}-nopasswd"
+    content: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  tags: [sudoers]

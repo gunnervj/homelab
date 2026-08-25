@@ -1,0 +1,135 @@
+---
+- name: Install ubuntu-drivers-common (not guaranteed present on Server)
+  ansible.builtin.apt:
+    name: ubuntu-drivers-common
+    state: present
+    update_cache: true
+
+- name: Check whether an NVIDIA driver is already installed
+  ansible.builtin.stat:
+    path: /usr/bin/nvidia-smi
+  register: nvidia_smi_bin
+
+- name: Install the recommended NVIDIA driver for this GPU
+  ansible.builtin.command: ubuntu-drivers install
+  when: not nvidia_smi_bin.stat.exists
+  register: nvidia_driver_install
+  changed_when: nvidia_driver_install.rc == 0
+
+- name: Reboot if the driver was just installed — required to load the kernel module
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: nvidia_driver_install is changed
+
+- name: Install powertop (cpupower comes along via linux-tools, kept for manual inspection only)
+  ansible.builtin.apt:
+    name: [powertop, linux-tools-common, "linux-tools-{{ ansible_facts.kernel }}"]
+    state: present
+    update_cache: true
+
+- name: Install a systemd unit that sets the CPU governor at every boot
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/cpu-governor.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Set CPU frequency governor to schedutil
+      After=multi-user.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/sh -c 'for d in /sys/devices/system/cpu/cpu[0-9]*/cpufreq; do avail="$d/scaling_available_governors"; gov=powersave; if [ -r "$avail" ] && grep -qw schedutil "$avail"; then gov=schedutil; fi; echo "$gov" > "$d/scaling_governor"; done'
+
+      [Install]
+      WantedBy=multi-user.target
+  register: governor_unit
+
+- name: Enable and start the CPU governor service
+  ansible.builtin.systemd:
+    name: cpu-governor.service
+    enabled: true
+    state: started
+    daemon_reload: "{{ governor_unit.changed }}"
+
+- name: Install a systemd unit that runs powertop --auto-tune at every boot
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/powertop-tune.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Apply powertop auto-tune at boot, except PCIe ASPM on the GPU
+      After=multi-user.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/sbin/powertop --auto-tune
+      ExecStart=/bin/sh -c 'for dev in $(lspci -D | grep -i nvidia | cut -d" " -f1); do echo on > /sys/bus/pci/devices/$dev/power/control; done'
+
+      [Install]
+      WantedBy=multi-user.target
+  register: powertop_unit
+
+- name: Enable and start the powertop-tune service
+  ansible.builtin.systemd:
+    name: powertop-tune.service
+    enabled: true
+    state: started
+    daemon_reload: "{{ powertop_unit.changed }}"
+
+- name: Find the 3TB bulk disk by size, don't assume /dev/sda
+  ansible.builtin.shell: |
+    set -o pipefail
+    lsblk -brndo NAME,SIZE,TYPE | awk '$3=="disk" && $2 > 2500000000000 {print "/dev/"$1}' | head -n1
+  args:
+    executable: /bin/bash
+  changed_when: false
+  register: bulk_disk
+
+- name: Fail loudly if no ~3TB disk was found, rather than guessing
+  ansible.builtin.assert:
+    that: bulk_disk.stdout | length > 0
+    fail_msg: >-
+      No disk over 2.5TB found on this host. This task only makes sense on
+      k3s-3 — if you're seeing this, power_tuning ran against the wrong host;
+      check site.yml's gpu_tower scoping before touching this task.
+
+- name: Persist HDD spin-down in hdparm.conf
+  ansible.builtin.blockinfile:
+    path: /etc/hdparm.conf
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED — bulk 3TB spin-down"
+    block: |
+      {{ bulk_disk.stdout }} {
+        apm = 127
+        spindown_time = 120
+      }
+
+- name: Apply hdparm spin-down immediately, not just on next boot
+  ansible.builtin.command: "hdparm -S 120 {{ bulk_disk.stdout }}"
+  changed_when: true
+
+- name: Install a systemd unit that re-applies the GPU power cap at every boot
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/gpu-power-cap.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Cap NVIDIA GPU power limit (resets on every driver reload)
+      After=multi-user.target nvidia-persistenced.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/nvidia-smi -pm 1
+      ExecStart=/usr/bin/nvidia-smi -pl {{ gpu_power_limit_watts }}
+
+      [Install]
+      WantedBy=multi-user.target
+  register: gpu_cap_unit
+
+- name: Enable and start the GPU power cap service
+  ansible.builtin.systemd:
+    name: gpu-power-cap.service
+    enabled: true
+    state: started
+    daemon_reload: "{{ gpu_cap_unit.changed }}"

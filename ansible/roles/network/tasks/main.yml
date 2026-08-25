@@ -1,0 +1,37 @@
+---
+- name: Disable cloud-init network management
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    content: "network: {config: disabled}\n"
+    mode: "0644"
+
+- name: Remove installer-generated netplan config
+  ansible.builtin.file:
+    path: /etc/netplan/50-cloud-init.yaml
+    state: absent
+
+- name: Write static network configuration
+  ansible.builtin.copy:
+    dest: /etc/netplan/01-static.yaml
+    mode: "0600"
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          {{ net_interface }}:
+            dhcp4: false
+            dhcp6: false
+            addresses:
+              - {{ ansible_host }}/24
+            routes:
+              - to: default
+                via: {{ net_gateway }}
+            nameservers:
+              addresses:
+                - {{ net_dns }}
+  register: netplan_config
+
+- name: Apply netplan
+  ansible.builtin.command: netplan apply
+  when: netplan_config.changed

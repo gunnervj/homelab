@@ -1,0 +1,85 @@
+---
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow SSH from the LAN only
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    src: 192.168.0.0/24
+
+# --- Kubernetes control plane ---
+- name: Allow the Kubernetes API
+  community.general.ufw:
+    rule: allow
+    port: "6443"
+    proto: tcp
+    src: 192.168.0.0/24
+
+- name: Allow etcd peer and client traffic between servers only
+  community.general.ufw:
+    rule: allow
+    port: "2379:2380"
+    proto: tcp
+    src: "{{ hostvars[item].ansible_host }}"
+  loop: "{{ groups['k3s_servers'] }}"
+  when: hostvars[item].ansible_host != ansible_host
+
+- name: Allow kubelet metrics between nodes
+  community.general.ufw:
+    rule: allow
+    port: "10250"
+    proto: tcp
+    src: "{{ hostvars[item].ansible_host }}"
+  loop: "{{ groups['k3s_servers'] }}"
+  when: hostvars[item].ansible_host != ansible_host
+
+# --- CNI ---
+- name: Allow flannel VXLAN between nodes
+  community.general.ufw:
+    rule: allow
+    port: "8472"
+    proto: udp
+    src: "{{ hostvars[item].ansible_host }}"
+  loop: "{{ groups['k3s_servers'] }}"
+  when: hostvars[item].ansible_host != ansible_host
+
+# --- MetalLB (installed later, in Phase 3 — opened here so you don't have
+# to remember to come back and punch a hole in the firewall mid-phase) ---
+- name: Allow MetalLB memberlist TCP between nodes
+  community.general.ufw:
+    rule: allow
+    port: "7946"
+    proto: tcp
+    src: "{{ hostvars[item].ansible_host }}"
+  loop: "{{ groups['k3s_servers'] }}"
+  when: hostvars[item].ansible_host != ansible_host
+
+- name: Allow MetalLB memberlist UDP between nodes
+  community.general.ufw:
+    rule: allow
+    port: "7946"
+    proto: udp
+    src: "{{ hostvars[item].ansible_host }}"
+  loop: "{{ groups['k3s_servers'] }}"
+  when: hostvars[item].ansible_host != ansible_host
+
+- name: Allow pod and service CIDRs (inter-pod traffic is not "external")
+  community.general.ufw:
+    rule: allow
+    src: "{{ item }}"
+  loop:
+    - 10.42.0.0/16      # k3s default pod CIDR
+    - 10.43.0.0/16      # k3s default service CIDR
+
+- name: Enable ufw with a default-deny inbound policy
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Harden sshd (see ssh.yml below)
+  ansible.builtin.include_tasks: ssh.yml

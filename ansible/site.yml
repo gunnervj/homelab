@@ -1,0 +1,28 @@
+---
+- name: Base configuration for all cluster nodes
+  hosts: k3s_servers
+  become: true
+  roles:
+    - { role: network, tags: [network] }
+    - { role: common, tags: [common] }
+    - { role: hardening, tags: [hardening] }
+    - { role: longhorn_prereq, tags: [longhorn_prereq] }
+
+- name: Laptop-specific tweaks
+  hosts: laptops
+  become: true
+  roles:
+    - { role: laptop_tweaks, tags: [laptop_tweaks] }
+
+- name: GPU tower power tuning
+  hosts: gpu_tower
+  become: true
+  roles:
+    - { role: power_tuning, tags: [power_tuning] }
+
+- name: Install k3s_servers
+  hosts: k3s_servers
+  become: true
+  serial: 1
+  roles:
+    - { role: k3s_server, tags: [k3s_server] }

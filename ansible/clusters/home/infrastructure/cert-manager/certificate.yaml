@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-naadroid
+  namespace: istio-ingress
+spec:
+  secretName: wildcard-naadroid-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  commonName: "*.naadroid.dev"
+  dnsNames:
+    - "*.naadroid.dev"
+    - "naadroid.dev"
