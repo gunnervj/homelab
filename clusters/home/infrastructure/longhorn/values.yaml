@@ -17,6 +17,17 @@ persistence:
   defaultClassReplicaCount: 2
   reclaimPolicy: Retain                 # don't delete data when a PVC is deleted
 
+# Disables the longhorn-pre-upgrade Job. That Job is a Helm PreSync hook,
+# and Argo CD runs PreSync hooks before any regular resource — including
+# the ServiceAccount the Job's own pod needs. On a fresh install (no prior
+# Longhorn version to check against) this Job has nothing to check anyway,
+# and leaving it enabled hangs the sync forever with the cluster stuck at
+# OutOfSync/Missing. Re-enable this later, only if you're doing an in-place
+# Longhorn version upgrade and want the pre-upgrade compatibility check —
+# by then the ServiceAccount will already exist, so the hook won't race it.
+preUpgradeChecker:
+  jobEnabled: false
+
 ingress:
   enabled: false    # the chart only knows how to create a classic Ingress —
                      # route it with an HTTPRoute below instead
