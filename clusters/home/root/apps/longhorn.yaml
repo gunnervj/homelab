@@ -16,6 +16,9 @@ spec:
           - $values/clusters/home/infrastructure/longhorn/values.yaml
     - repoURL: https://github.com/gunnervj/homelab.git
       targetRevision: main
+      path: clusters/home/infrastructure/longhorn
+      directory:
+        include: '{httproute.yaml,storageclasses.yaml}'
       ref: values
   destination:
     server: https://kubernetes.default.svc
