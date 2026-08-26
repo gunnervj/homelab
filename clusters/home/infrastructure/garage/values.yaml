@@ -1,0 +1,41 @@
+deployment:
+  replicaCount: 1
+
+persistence:
+  enabled: true
+  data:
+    storageClass: longhorn-bulk
+    size: 1500Gi
+  meta:
+    storageClass: longhorn-bulk
+    size: 10Gi
+
+garage:
+  rpcSecret: ""
+  replicationFactor: 1     
+  s3:
+    api:
+      region: garage
+environment:
+  - name: GARAGE_ADMIN_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: garage-secrets
+        key: adminToken
+  - name: GARAGE_METRICS_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: garage-secrets
+        key: metricsToken
+
+monitoring:
+  metrics:
+    enabled: true  
+
+service:
+  type: ClusterIP
+  s3:
+    api:
+      port: 3900
+    web:
+      port: 3902
