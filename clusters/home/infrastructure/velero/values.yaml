@@ -21,6 +21,9 @@ configuration:
 initContainers:
   - name: velero-plugin-for-aws
     image: velero/velero-plugin-for-aws:v1.11.0
+    securityContext:
+      runAsNonRoot: false
+      allowPrivilegeEscalation: false
     volumeMounts:
       - mountPath: /target
         name: plugins
