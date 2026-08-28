@@ -13,7 +13,10 @@ spec:
     spec:
       containers:
         - name: garage-webui
-          image: khairul169/garage-webui:1.1.0   # pin the tag; check for newer releases
+          image: khairul169/garage-webui:1.1.0
+          securityContext:
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false   # pin the tag; check for newer releases
           ports:
             - containerPort: 3909
           env:
