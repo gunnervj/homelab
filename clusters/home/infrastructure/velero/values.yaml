@@ -18,12 +18,39 @@ configuration:
   defaultVolumesToFsBackup: true
   features: ""
 
+# don't let the hook-job kubectl image auto-derive from the
+# cluster's k3s version — bitnamilegacy is frozen at 1.33.4 and will
+# never have a tag matching a newer k3s minor (e.g. 1.36).
+kubectl:
+  image:
+    repository: docker.io/bitnamilegacy/kubectl
+    tag: "1.33.4"
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { memory: 128Mi }
+
+# the main velero image is CNB/Paketo-built (USER cnb, not
+# numeric), so Kubernetes can't verify runAsNonRoot from the image alone.
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# resources for the upgrade-crds hook job specifically.
+upgradeJobResources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits:   { memory: 128Mi }
+
 initContainers:
   - name: velero-plugin-for-aws
     image: velero/velero-plugin-for-aws:v1.11.0
     securityContext:
       runAsNonRoot: false
       allowPrivilegeEscalation: false
+    # required, or Kyverno's require-limits policy blocks
+    # this container the same way it flagged the hook jobs earlier.
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { memory: 128Mi }
     volumeMounts:
       - mountPath: /target
         name: plugins
@@ -31,6 +58,13 @@ initContainers:
 deployNodeAgent: true
 
 nodeAgent:
+  # node-agent genuinely needs root for host filesystem access
+  # during fs-backup — this is intentional in the chart, not an oversight.
+  # Without this override, Kyverno's runAsNonRoot:true mutation directly
+  # conflicts with the chart's runAsUser:0 default and the DaemonSet's
+  # pods will refuse to schedule.
+  podSecurityContext:
+    runAsNonRoot: false
   resources:
     requests: { cpu: 50m, memory: 128Mi }
     limits:   { memory: 1Gi }
