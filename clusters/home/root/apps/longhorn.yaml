@@ -18,7 +18,7 @@ spec:
       targetRevision: main
       path: clusters/home/infrastructure/longhorn
       directory:
-        include: '{httproute.yaml,storageclasses.yaml}'
+        include: '{httproute.yaml, storageclasses.yaml, recurringjobs.yaml}'
       ref: values
   destination:
     server: https://kubernetes.default.svc
