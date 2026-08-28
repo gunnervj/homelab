@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garage-webui
+  namespace: garage
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: garage-webui }
+  template:
+    metadata:
+      labels: { app: garage-webui }
+    spec:
+      containers:
+        - name: garage-webui
+          image: khairul169/garage-webui:1.1.0   # pin the tag; check for newer releases
+          ports:
+            - containerPort: 3909
+          env:
+            - name: API_BASE_URL
+              value: http://garage.garage.svc.cluster.local:3903
+            - name: S3_ENDPOINT_URL
+              value: http://garage.garage.svc.cluster.local:3900
+            - name: S3_REGION
+              value: garage
+            - name: API_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: garage-secrets     # sealed earlier in this step
+                  key: adminToken
+            - name: AUTH_USER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: garage-webui-secret
+                  key: AUTH_USER_PASS
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { memory: 128Mi }
+          readinessProbe:
+            tcpSocket: { port: 3909 }   # no documented /healthz — TCP is the honest check here
+            initialDelaySeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 3909 }
+            initialDelaySeconds: 15
+            periodSeconds: 20

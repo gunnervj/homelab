@@ -21,7 +21,7 @@ spec:
       targetRevision: main
       path: clusters/home/infrastructure/garage
       directory:
-        include: '{garage-secrets-sealed.yaml,httproute.yaml}'
+        include: '{garage-secrets-sealed.yaml,httproute.yaml,webui-secret-sealed.yaml,webui-deployment.yaml,webui-service.yaml,webui-httproute.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: garage
