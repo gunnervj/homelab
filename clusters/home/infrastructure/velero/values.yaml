@@ -1,0 +1,51 @@
+credentials:
+  existingSecret: velero-credentials
+
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: velero
+      config:
+        region: garage
+        s3ForcePathStyle: "true"
+        s3Url: http://garage.garage.svc.cluster.local:3900
+  volumeSnapshotLocation:
+    - name: default
+      provider: aws
+      config:
+        region: garage-default
+  defaultVolumesToFsBackup: true
+  features: ""
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.11.0
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+deployNodeAgent: true
+
+nodeAgent:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { memory: 1Gi }
+
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { memory: 512Mi }
+
+schedules:
+  daily:
+    schedule: "0 2 * * *"
+    template:
+      ttl: 168h                       # 7 days
+      excludedNamespaces:
+        - kube-system
+        - velero
+  weekly:
+    schedule: "0 3 * * 0"
+    template:
+      ttl: 720h                       # 30 days
+      includedNamespaces: ["*"]
