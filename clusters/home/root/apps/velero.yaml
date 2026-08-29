@@ -21,7 +21,7 @@ spec:
       targetRevision: main
       path: clusters/home/infrastructure/velero
       directory:
-        include: 'velero-credentials-sealed.yaml'
+        include: 'credentials-sealed.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: velero
