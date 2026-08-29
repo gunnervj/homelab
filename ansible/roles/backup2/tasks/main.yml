@@ -35,3 +35,21 @@
     fstype: ext4
     opts: "defaults,nofail,x-systemd.device-timeout=10"
     state: mounted
+
+- name: Point k3s-3's own etcd snapshot schedule at backup2
+  ansible.builtin.blockinfile:
+    path: /etc/rancher/k3s/config.yaml
+    marker: "# {mark} ANSIBLE MANAGED BLOCK — backup2 etcd snapshot config"
+    block: |
+      etcd-snapshot-schedule-cron: "0 3 * * *"
+      etcd-snapshot-dir: /srv/backup2/etcd-snapshots
+      etcd-snapshot-retention: 10
+  notify: Restart k3s
+
+- name: Create the directory Longhorn will back up into
+  ansible.builtin.file:
+    path: /srv/backup2/longhorn-direct
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"

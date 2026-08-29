@@ -1,0 +1,81 @@
+---
+- name: Install NAS services
+  ansible.builtin.apt:
+    name: [samba, nfs-kernel-server, acl]
+    state: present
+
+- name: Create Samba share directories
+  ansible.builtin.file:
+    path: "/srv/bulk/nas/{{ item }}"
+    state: directory
+    owner: "{{ nas_user }}"
+    group: "{{ nas_group }}"
+    mode: "2770"
+  loop: [backups, media, documents]
+
+- name: Configure Samba
+  ansible.builtin.copy:
+    dest: /etc/samba/smb.conf
+    mode: "0644"
+    content: |
+      [global]
+        workgroup = WORKGROUP
+        server string = homelab-nas
+        security = user
+        map to guest = never
+        # Restrict to the LAN. Samba on an open interface is a bad idea.
+        hosts allow = 192.168.0.0/24 127.0.0.1
+        hosts deny = 0.0.0.0/0
+        interfaces = lo {{ ansible_facts.default_ipv4.interface }}
+        bind interfaces only = yes
+        # SMB1 is obsolete and insecure; refuse it.
+        server min protocol = SMB3
+        client min protocol = SMB3
+        smb encrypt = required
+        # Don't advertise printers you don't have
+        load printers = no
+        printing = bsd
+        printcap name = /dev/null
+        disable spoolss = yes
+
+      [backups]
+        path = /srv/bulk/nas/backups
+        browseable = yes
+        read only = no
+        valid users = {{ nas_user }}
+        force group = {{ nas_group }}
+        create mask = 0660
+        directory mask = 2770
+
+      [media]
+        path = /srv/bulk/nas/media
+        browseable = yes
+        read only = no
+        valid users = {{ nas_user }}
+        force group = {{ nas_group }}
+        create mask = 0660
+        directory mask = 2770
+  notify: restart samba
+
+- name: Export backup2's longhorn-direct directory over NFS — Longhorn only, nothing else
+  ansible.builtin.copy:
+    dest: /etc/exports
+    mode: "0644"
+    content: |
+      /srv/backup2/longhorn-direct  192.168.0.0/24(rw,sync,no_subtree_check,root_squash)
+  notify: reload nfs exports
+
+- name: Open NAS ports to the LAN only
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+    src: 192.168.0.0/24
+  loop: ["445", "2049"]
+
+- name: Enable services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: [smbd, nmbd, nfs-server]

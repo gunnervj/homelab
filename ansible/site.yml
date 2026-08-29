@@ -20,6 +20,7 @@
   roles:
     - { role: power_tuning, tags: [power_tuning] }
     - { role: backup2, tags: [backup2] }
+    - { role: nas, tags: [nas] }
 
 - name: Install k3s_servers
   hosts: k3s_servers
