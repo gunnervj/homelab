@@ -1,0 +1,55 @@
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: 45GB
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          resources: { requests: { storage: 50Gi } }
+    resources:
+      requests: { cpu: 500m, memory: 2Gi }
+      limits:   { memory: 4Gi }
+    # Discover ServiceMonitors in all namespaces, not just this Helm release
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+grafana:
+  enabled: true
+  admin:
+    existingSecret: grafana-admin-secret
+    userKey: admin-user
+    passwordKey: admin-password      # replace with a sealed secret
+  persistence:
+    enabled: true
+    storageClassName: longhorn
+    size: 10Gi
+  ingress:
+    enabled: false      # routed via HTTPRoute below, same pattern as the rest of Phase 4
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki.observability.svc.cluster.local:3100
+      access: proxy
+
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          resources: { requests: { storage: 5Gi } }
+
+# k3s runs the control plane inside a single process, so these separate
+# scrape targets don't exist and will alert as permanently down.
+kubeControllerManager: { enabled: false }
+kubeScheduler:         { enabled: false }
+kubeProxy:             { enabled: false }
+kubeEtcd:              { enabled: false }
