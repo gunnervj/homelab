@@ -17,6 +17,11 @@ spec:
     - repoURL: https://github.com/gunnervj/homelab.git
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/gunnervj/homelab.git
+      targetRevision: main
+      path: clusters/home/infrastructure/velero
+      directory:
+        include: 'velero-credentials-sealed.yaml'
   destination:
     server: https://kubernetes.default.svc
     namespace: velero
