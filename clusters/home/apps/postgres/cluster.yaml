@@ -1,0 +1,25 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: shared-data
+spec:
+  instances: 1   # bump later for HA — CNPG handles that natively, unlike
+                  # the single-pod StatefulSet this replaces
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql-minimal-trixie   # from the catalog Application above
+    major: 18                          # pgvector's ImageVolume mechanism
+                                        # needs extension_control_path, which
+                                        # only exists from Postgres 18 on —
+                                        # this can't be 17 like the Bitnami setup was
+  storage:
+    size: 20Gi
+    storageClass: longhorn
+  postgresql:
+    extensions:
+      - name: pgvector   # image.reference, share/lib paths all resolved from the catalog
+  superuserSecret:
+    name: postgres-superuser
+  enableSuperuserAccess: true

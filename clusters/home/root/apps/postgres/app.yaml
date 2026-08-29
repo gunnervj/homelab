@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"   # after the operator + catalog apps
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/gunnervj/homelab.git
+    targetRevision: main
+    path: clusters/home/apps/postgres
+    directory:
+      recurse: true   # picks up cluster.yaml, database.yaml, and
+                       # postgres-superuser-sealed.yaml together — this is
+                       # plain manifests now, not a Helm chart, so there's
+                       # no `helm.valueFiles` here at all
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: shared-data
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

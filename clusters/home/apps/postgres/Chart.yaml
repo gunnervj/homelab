@@ -1,8 +1,0 @@
-apiVersion: v2
-name: postgres
-description: Postgres, vendored fully into this repo
-version: 0.1.0
-dependencies:
-  - name: postgresql
-    version: "16.2.4"   
-    repository: "oci://registry-1.docker.io/bitnamicharts"

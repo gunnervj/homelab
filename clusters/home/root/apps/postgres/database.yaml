@@ -1,0 +1,20 @@
+# CNPG's declarative replacement for the manual `CREATE DATABASE` /
+# `CREATE EXTENSION` steps the Bitnami setup needed. Applying this is
+# enough — the operator reconciles it against the running cluster and
+# runs `CREATE EXTENSION IF NOT EXISTS vector` for you.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: postgres-myapp
+  namespace: shared-data
+spec:
+  name: myapp
+  owner: myapp
+  cluster:
+    name: postgres
+  extensions:
+    - name: vector
+      version: "0.8.5"   # match whatever the catalog's pgvector entry
+                          # currently pins — `kubectl describe
+                          # clusterimagecatalog postgresql-minimal-trixie`
+                          # shows the resolved image tag/version

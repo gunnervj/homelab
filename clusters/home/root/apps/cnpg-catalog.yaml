@@ -1,0 +1,33 @@
+# Installs the community-maintained ClusterImageCatalog for Postgres
+# "minimal" images on Debian trixie, WITH extension definitions included
+# (pgvector, PostGIS, timescaledb-oss, etc.) — this is the
+# image-catalogs-extensions variant, not the plain image-catalogs one.
+# Images are pinned by sha256 digest inside the catalog itself, so this
+# file's own targetRevision (a git ref, not a digest) is the only thing
+# you're trusting to move — the actual Postgres/pgvector builds referenced
+# inside are immutable regardless.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cnpg-catalog
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after the operator, before any Cluster
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/cloudnative-pg/artifacts.git
+    targetRevision: main
+    path: image-catalogs-extensions
+    directory:
+      include: 'catalog-minimal-trixie.yaml'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system   # ClusterImageCatalog is cluster-scoped; namespace here is nominal
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }   # prune:false — this repo's
+      # upstream history isn't something you control; if a future revision
+      # of `main` renames or restructures files, an automated prune could
+      # delete a ClusterImageCatalog out from under running clusters. Bump
+      # this by hand when you actually want the newer catalog.
+    syncOptions: [ServerSideApply=true]
