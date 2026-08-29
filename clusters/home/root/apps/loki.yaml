@@ -10,13 +10,18 @@ spec:
   sources:
     - repoURL: https://grafana.github.io/helm-charts
       chart: loki
-      targetRevision: 6.*
+      targetRevision: 6.46.0   
       helm:
         valueFiles:
           - $values/clusters/home/observability/loki/values.yaml
     - repoURL: https://github.com/gunnervj/homelab.git
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/gunnervj/homelab.git
+      targetRevision: main
+      path: clusters/home/observability/loki
+      directory:
+        include: '{loki-s3-credentials-sealed.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
