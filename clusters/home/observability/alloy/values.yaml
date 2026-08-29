@@ -41,10 +41,16 @@ alloy:
     runAsNonRoot: true
     runAsUser: 65534
     runAsGroup: 65534
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { memory: 256Mi }
 configReloader:
   securityContext:
     runAsNonRoot: true
     runAsUser: 65534
     runAsGroup: 65534
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits:   { memory: 64Mi }
 controller:
   type: daemonset
