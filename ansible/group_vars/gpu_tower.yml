@@ -1,0 +1,5 @@
+backup2_device: /dev/disk/by-id/ata-Samsung_SSD_870_EVO_1TB_S75BNL0Y110156E
+backup2_label: backup2
+
+nas_user: vjnair
+nas_group: nasusers

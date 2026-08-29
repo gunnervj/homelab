@@ -1,0 +1,37 @@
+---
+- name: Confirm the target disk is not already mounted
+  ansible.builtin.command: findmnt --source "{{ backup2_device }}"
+  register: backup2_existing_mount
+  changed_when: false
+  failed_when: false
+
+- name: Fail loudly if the disk is mounted somewhere unexpected
+  ansible.builtin.fail:
+    msg: >
+      {{ backup2_device }} is already mounted at a path that isn't
+      /srv/backup2 — stop and check by hand before this role touches it.
+  when:
+    - backup2_existing_mount.rc == 0
+    - "'/srv/backup2' not in backup2_existing_mount.stdout"
+
+- name: Create the ext4 filesystem, only if the disk doesn't already have one
+  community.general.filesystem:
+    fstype: ext4
+    dev: "{{ backup2_device }}"
+    opts: "-L {{ backup2_label }}"
+
+- name: Create the mountpoint
+  ansible.builtin.file:
+    path: /srv/backup2
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Mount by label and persist in fstab
+  ansible.posix.mount:
+    path: /srv/backup2
+    src: "LABEL={{ backup2_label }}"
+    fstype: ext4
+    opts: "defaults,nofail,x-systemd.device-timeout=10"
+    state: mounted
