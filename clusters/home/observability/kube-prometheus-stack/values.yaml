@@ -16,6 +16,8 @@ prometheus:
     ruleSelectorNilUsesHelmValues: false
 
 prometheusOperator:
+  tls:
+    enabled: false
   admissionWebhooks:
     certManager:
       enabled: true
