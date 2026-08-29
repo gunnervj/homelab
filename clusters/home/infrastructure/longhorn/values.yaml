@@ -10,7 +10,6 @@ defaultSettings:
   replicaReplenishmentWaitInterval: 1800
   concurrentReplicaRebuildPerNodeLimit: 1
   backupTarget: "nfs://192.168.0.13:/srv/backup2/longhorn-direct"
-  backupTargetCredentialSecret: garage-backup-secret
 
 persistence:
   defaultClass: true
