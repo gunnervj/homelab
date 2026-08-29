@@ -15,12 +15,27 @@ prometheus:
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
 
+prometheusOperator:
+  admissionWebhooks:
+    certManager:
+      enabled: true
+      issuerRef:
+        name: webhook-selfsigned
+        kind: ClusterIssuer
+
 grafana:
   enabled: true
+  fullnameOverride: grafana   # pins the Service name so the HTTPRoute's
+                               # backendRef below is correct regardless of
+                               # what you named this Application — without
+                               # this the chart defaults to
+                               # <release-name>-grafana (e.g.
+                               # kube-prometheus-stack-grafana), which is
+                               # NOT what the HTTPRoute points at
   admin:
     existingSecret: grafana-admin-secret
     userKey: admin-user
-    passwordKey: admin-password      # replace with a sealed secret
+    passwordKey: admin-password
   persistence:
     enabled: true
     storageClassName: longhorn

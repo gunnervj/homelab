@@ -21,7 +21,7 @@ spec:
       targetRevision: main
       path: clusters/home/observability/kube-prometheus-stack
       directory:
-        include: '{httproute.yaml,grafana-admin-secret-sealed.yaml}'
+        include: '{httproute.yaml,grafana-admin-secret-sealed.yaml,webhook-selfsigned-issuer.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
