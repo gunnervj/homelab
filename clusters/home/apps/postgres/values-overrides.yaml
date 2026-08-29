@@ -1,0 +1,7 @@
+postgresql:
+  auth:
+    existingSecret: postgres-admin-secret
+  primary:
+    persistence:
+      size: 20Gi
+      storageClass: ""
