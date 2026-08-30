@@ -20,6 +20,9 @@ spec:
           command:
             - sh
             - /scripts/setup.sh
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
           env:
             - name: FRONTEND_URL
               value: "https://finance.naadroid.dev"
