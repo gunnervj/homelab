@@ -25,6 +25,9 @@ spec:
               until nc -z postgres-rw.shared-data.svc.cluster.local 5432; do
                 echo "Waiting for PostgreSQL..."; sleep 5
               done
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
       containers:
         - name: keycloak
           image: vnair5/pf-keycloak:latest
