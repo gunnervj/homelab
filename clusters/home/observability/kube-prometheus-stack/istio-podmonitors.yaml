@@ -1,0 +1,55 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ztunnel
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - istio-system
+  selector:
+    matchLabels:
+      app: ztunnel
+  podMetricsEndpoints:
+    - port: ztunnel-stats
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istio-waypoint
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: waypoint
+  podMetricsEndpoints:
+    - port: http-envoy-prom
+      path: /stats/prometheus
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: istiod
+  namespace: observability
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - istio-system
+  selector:
+    matchLabels:
+      app: istiod
+  podMetricsEndpoints:
+    - port: http-monitoring
+      path: /metrics
+      interval: 15s
