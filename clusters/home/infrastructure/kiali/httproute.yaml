@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kiali
+  namespace: istio-system
+spec:
+  parentRefs:
+    - name: homelab-gateway
+      namespace: istio-ingress
+  hostnames:
+    - "kiali.naadroid.dev"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: kiali
+          port: 20001

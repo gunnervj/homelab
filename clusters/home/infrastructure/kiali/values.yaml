@@ -1,0 +1,19 @@
+auth:
+  strategy: anonymous
+
+deployment:
+  accessible_namespaces:
+    - "**"
+
+external_services:
+  prometheus:
+    url: "http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
+  istio:
+    root_namespace: istio-system
+  grafana:
+    enabled: false
+
+istio_namespace: istio-system
+
+server:
+  port: 20001
