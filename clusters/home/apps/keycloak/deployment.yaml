@@ -30,7 +30,7 @@ spec:
             runAsUser: 65534
       containers:
         - name: keycloak
-          image: vnair5/pf-keycloak:latest
+          image: vnair5/pf-keycloak:v1
           imagePullPolicy: Always
           args:
             - start
