@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: personal-finance
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: frontend
+          image: vnair5/pf-frontend:v1
+          imagePullPolicy: Always
+          env:
+            - name: NEXTAUTH_URL
+              value: "https://finance.naadroid.dev"
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: frontend-secrets
+                  key: nextauth-secret
+            - name: KEYCLOAK_ID
+              value: frontend
+            - name: KEYCLOAK_SECRET
+              value: ""
+            - name: KEYCLOAK_ISSUER
+              value: "https://auth.naadroid.dev/realms/personal-finance"
+            - name: KEYCLOAK_INTERNAL_ISSUER
+              value: "http://keycloak.security.svc.cluster.local:8080/realms/personal-finance"
+            - name: NODE_TLS_REJECT_UNAUTHORIZED
+              value: "0"
+            - name: USER_SERVICE_URL
+              value: "http://user-service.personal-finance.svc.cluster.local:8081"
+            - name: BUDGET_SERVICE_URL
+              value: "http://budget-service.personal-finance.svc.cluster.local:8082"
+            - name: TRANSACTION_SERVICE_URL
+              value: "http://transaction-service.personal-finance.svc.cluster.local:8083"
+            - name: NET_WORTH_SERVICE_URL
+              value: "http://net-worth-service.personal-finance.svc.cluster.local:8084"
+            - name: RETIREMENT_SERVICE_URL
+              value: "http://retirement-service.personal-finance.svc.cluster.local:8085"
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/auth/providers
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/auth/providers
+              port: 3000
+            initialDelaySeconds: 40
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

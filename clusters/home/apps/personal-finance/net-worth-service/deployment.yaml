@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: net-worth-service
+  namespace: personal-finance
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: net-worth-service
+  template:
+    metadata:
+      labels:
+        app: net-worth-service
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 185
+      containers:
+        - name: net-worth-service
+          image: vnair5/pf-net-worth-service:v1
+          imagePullPolicy: Always
+          env:
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:postgresql://postgres-rw.shared-data.svc.cluster.local:5432/personalfinance"
+            - name: QUARKUS_DATASOURCE_USERNAME
+              value: admin
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: QUARKUS_OIDC_AUTH_SERVER_URL
+              value: "http://keycloak.security.svc.cluster.local:8080/realms/personal-finance"
+            - name: QUARKUS_OIDC_TLS_VERIFICATION
+              value: none
+            - name: QUARKUS_OIDC_TOKEN_ISSUER
+              value: any
+            - name: QUARKUS_HTTP_CORS_ORIGINS
+              value: "https://finance.naadroid.dev"
+            - name: QUARKUS_HTTP_CORS_METHODS
+              value: "GET,POST,PUT,DELETE,OPTIONS"
+            - name: QUARKUS_HTTP_CORS_HEADERS
+              value: "Content-Type,Authorization,Accept,Origin,X-Requested-With"
+            - name: QUARKUS_HTTP_CORS_ACCESS_CONTROL_ALLOW_CREDENTIALS
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8084
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: 8084
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: 8084
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
