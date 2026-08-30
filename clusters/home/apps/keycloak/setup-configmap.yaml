@@ -1,0 +1,203 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-setup-script
+  namespace: security
+data:
+  setup.sh: |
+    #!/bin/sh
+    set -e
+
+    KEYCLOAK_URL="http://keycloak:8080"
+    REALM="personal-finance"
+
+    echo "Waiting for Keycloak to be ready at ${KEYCLOAK_URL}/realms/master ..."
+    until curl -sf "${KEYCLOAK_URL}/realms/master" > /dev/null 2>&1; do
+      echo "Keycloak not ready yet, retrying in 10s..."
+      sleep 10
+    done
+    echo "Keycloak is ready."
+
+    get_admin_token() {
+      curl -sf -X POST "${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "client_id=admin-cli" \
+        -d "username=${KEYCLOAK_ADMIN_USER}" \
+        -d "password=${KEYCLOAK_ADMIN_PASSWORD}" \
+        -d "grant_type=password" | \
+        sed 's/.*"access_token":"\([^"]*\)".*/\1/'
+    }
+
+    TOKEN=$(get_admin_token)
+    if [ -z "$TOKEN" ]; then
+      echo "ERROR: Failed to obtain admin token."
+      exit 1
+    fi
+    echo "Admin token obtained."
+
+    REALM_EXISTS=$(curl -sf -o /dev/null -w "%{http_code}" \
+      -H "Authorization: Bearer ${TOKEN}" \
+      "${KEYCLOAK_URL}/admin/realms/${REALM}" || echo "404")
+
+    if [ "$REALM_EXISTS" = "200" ]; then
+      echo "Realm '${REALM}' already exists. Updating..."
+      curl -sf -X PUT "${KEYCLOAK_URL}/admin/realms/${REALM}" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "realm": "personal-finance",
+          "enabled": true,
+          "displayName": "Personal Finance",
+          "registrationAllowed": true,
+          "loginWithEmailAllowed": true,
+          "duplicateEmailsAllowed": false,
+          "loginTheme": "personal-finance",
+          "resetPasswordAllowed": false,
+          "editUsernameAllowed": false,
+          "bruteForceProtected": true
+        }'
+      echo "Realm updated."
+    else
+      echo "Creating realm '${REALM}'..."
+      curl -sf -X POST "${KEYCLOAK_URL}/admin/realms" \
+        -H "Authorization: Bearer ${TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "realm": "personal-finance",
+          "enabled": true,
+          "displayName": "Personal Finance",
+          "registrationAllowed": true,
+          "loginWithEmailAllowed": true,
+          "duplicateEmailsAllowed": false,
+          "loginTheme": "personal-finance",
+          "resetPasswordAllowed": false,
+          "editUsernameAllowed": false,
+          "bruteForceProtected": true
+        }'
+      echo "Realm created."
+      TOKEN=$(get_admin_token)
+    fi
+
+    upsert_client() {
+      CLIENT_ID="$1"
+      CLIENT_JSON="$2"
+
+      EXISTING=$(curl -sf \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=${CLIENT_ID}")
+
+      EXISTING_UUID=$(echo "$EXISTING" | sed 's/^\[{"id":"\([^"]*\)".*/\1/')
+
+      if [ -n "$EXISTING_UUID" ] && [ "$EXISTING_UUID" != "$EXISTING" ]; then
+        echo "Updating client '${CLIENT_ID}' (uuid: ${EXISTING_UUID})..." >&2
+        curl -sf -X PUT "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${EXISTING_UUID}" \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "$CLIENT_JSON"
+        echo "$EXISTING_UUID"
+      else
+        echo "Creating client '${CLIENT_ID}'..." >&2
+        curl -sf -X POST "${KEYCLOAK_URL}/admin/realms/${REALM}/clients" \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d "$CLIENT_JSON"
+        NEW=$(curl -sf \
+          -H "Authorization: Bearer ${TOKEN}" \
+          "${KEYCLOAK_URL}/admin/realms/${REALM}/clients?clientId=${CLIENT_ID}")
+        echo "$NEW" | sed 's/.*"id":"\([^"]*\)".*/\1/' | head -1
+      fi
+    }
+
+    FRONTEND_UUID=$(upsert_client "frontend" "{
+      \"clientId\": \"frontend\",
+      \"name\": \"Personal Finance Frontend\",
+      \"enabled\": true,
+      \"publicClient\": true,
+      \"standardFlowEnabled\": true,
+      \"implicitFlowEnabled\": false,
+      \"directAccessGrantsEnabled\": true,
+      \"redirectUris\": [\"${FRONTEND_URL}/*\", \"${FRONTEND_URL}/api/auth/callback/keycloak\", \"http://localhost:3000/*\", \"http://localhost:3000/api/auth/callback/keycloak\"],
+      \"webOrigins\": [\"${FRONTEND_URL}\", \"http://localhost:3000\"],
+      \"protocol\": \"openid-connect\"
+    }")
+    echo "Frontend client UUID: ${FRONTEND_UUID}"
+
+    if [ -n "$FRONTEND_UUID" ]; then
+      echo "Adding email protocol mapper to frontend client..."
+      MAPPERS=$(curl -sf \
+        -H "Authorization: Bearer ${TOKEN}" \
+        "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${FRONTEND_UUID}/protocol-mappers/models")
+
+      EMAIL_MAPPER_EXISTS=$(echo "$MAPPERS" | grep -c '"name":"email"' || true)
+
+      if [ "$EMAIL_MAPPER_EXISTS" = "0" ]; then
+        curl -sf -X POST \
+          "${KEYCLOAK_URL}/admin/realms/${REALM}/clients/${FRONTEND_UUID}/protocol-mappers/models" \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "email",
+            "protocol": "openid-connect",
+            "protocolMapper": "oidc-usermodel-property-mapper",
+            "consentRequired": false,
+            "config": {
+              "userinfo.token.claim": "true",
+              "user.attribute": "email",
+              "id.token.claim": "true",
+              "access.token.claim": "true",
+              "claim.name": "email",
+              "jsonType.label": "String"
+            }
+          }'
+        echo "Email protocol mapper added."
+      else
+        echo "Email protocol mapper already exists, skipping."
+      fi
+    fi
+
+    upsert_client "user-service" '{
+      "clientId": "user-service",
+      "name": "User Service",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "bearerOnly": false,
+      "protocol": "openid-connect"
+    }'
+    echo "user-service client configured."
+
+    upsert_client "budget-service" '{
+      "clientId": "budget-service",
+      "name": "Budget Service",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "bearerOnly": false,
+      "protocol": "openid-connect"
+    }'
+    echo "budget-service client configured."
+
+    upsert_client "transaction-service" '{
+      "clientId": "transaction-service",
+      "name": "Transaction Service",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "bearerOnly": false,
+      "protocol": "openid-connect"
+    }'
+    echo "transaction-service client configured."
+
+    echo ""
+    echo "======================================================"
+    echo "Keycloak setup complete for realm '${REALM}'."
+    echo "======================================================"
