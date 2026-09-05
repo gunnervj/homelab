@@ -3,10 +3,11 @@ kind: Ingress
 metadata:
   name: affine
   namespace: affine
-  annotations:
-    tailscale.com/hostname: affine
 spec:
   ingressClassName: tailscale
+  tls:
+    - hosts:
+        - affine
   defaultBackend:
     service:
       name: affine

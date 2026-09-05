@@ -3,10 +3,11 @@ kind: Ingress
 metadata:
   name: finance
   namespace: personal-finance
-  annotations:
-    tailscale.com/hostname: finance
 spec:
   ingressClassName: tailscale
+  tls:
+    - hosts:
+        - finance
   defaultBackend:
     service:
       name: frontend
