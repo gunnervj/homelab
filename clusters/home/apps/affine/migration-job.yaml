@@ -30,22 +30,9 @@ spec:
               value: redis.shared-data.svc.cluster.local
             - name: DEPLOYMENT_TYPE
               value: selfhosted
-          volumeMounts:
-            - name: storage
-              mountPath: /root/.affine/storage
-            - name: config
-              mountPath: /root/.affine/config
-              readOnly: true
           resources:
             requests:
               cpu: "100m"
               memory: "256Mi"
             limits:
               memory: "512Mi"
-      volumes:
-        - name: storage
-          persistentVolumeClaim:
-            claimName: affine-storage
-        - name: config
-          configMap:
-            name: affine-config
