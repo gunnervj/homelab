@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affine
+  namespace: affine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: affine
+  template:
+    metadata:
+      labels:
+        app: affine
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        runAsNonRoot: false
+      containers:
+        - name: affine
+          image: ghcr.io/toeverything/affine:stable
+          ports:
+            - name: http
+              containerPort: 3010
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: affine-db
+                  key: DATABASE_URL
+            - name: REDIS_SERVER_HOST
+              value: redis.shared-data.svc.cluster.local
+            - name: DEPLOYMENT_TYPE
+              value: selfhosted
+          volumeMounts:
+            - name: storage
+              mountPath: /root/.affine/storage
+            - name: config
+              mountPath: /root/.affine/config
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /api/worker-version
+              port: 3010
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /api/worker-version
+              port: 3010
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: affine-storage
+        - name: config
+          configMap:
+            name: affine-config

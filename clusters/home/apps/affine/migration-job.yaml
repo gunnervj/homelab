@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: affine-migration
+  namespace: affine
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: affine-migration
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: false
+      containers:
+        - name: affine-migration
+          image: ghcr.io/toeverything/affine:stable
+          command: ["node", "./scripts/self-host-predeploy.js"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: affine-db
+                  key: DATABASE_URL
+            - name: REDIS_SERVER_HOST
+              value: redis.shared-data.svc.cluster.local
+            - name: DEPLOYMENT_TYPE
+              value: selfhosted
+          volumeMounts:
+            - name: storage
+              mountPath: /root/.affine/storage
+            - name: config
+              mountPath: /root/.affine/config
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: affine-storage
+        - name: config
+          configMap:
+            name: affine-config
