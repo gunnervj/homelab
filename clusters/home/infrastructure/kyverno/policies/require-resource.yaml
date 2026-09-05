@@ -17,7 +17,7 @@ spec:
       exclude:
         any:
           - resources:
-              namespaces: [kube-system, longhorn-system, kyverno]
+              namespaces: [kube-system, longhorn-system, kyverno, tailscale]
       validate:
         message: "Every container needs CPU/memory requests and a memory limit."
         pattern:
