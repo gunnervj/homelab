@@ -10,7 +10,7 @@ spec:
       exclude:
         any:
           - resources:
-              namespaces: [kube-system, longhorn-system, kyverno, monitoring]
+              namespaces: [kube-system, longhorn-system, kyverno, monitoring, tailscale]
       mutate:
         patchStrategicMerge:
           spec:

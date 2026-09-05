@@ -9,5 +9,8 @@ data:
       "server": {
         "name": "AFFiNE",
         "externalUrl": "https://affine.naadroid.dev"
+      },
+      "auth": {
+        "requireEmailVerification": false
       }
     }
