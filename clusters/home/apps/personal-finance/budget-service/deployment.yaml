@@ -20,7 +20,7 @@ spec:
         runAsUser: 185
       containers:
         - name: budget-service
-          image: vnair5/pf-budget-service:v2
+          image: vnair5/pf-budget-service:v3
           imagePullPolicy: Always
           env:
             - name: QUARKUS_DATASOURCE_JDBC_URL
