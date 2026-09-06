@@ -20,7 +20,7 @@ spec:
         runAsUser: 185
       containers:
         - name: user-service
-          image: vnair5/pf-user-service:v1
+          image: vnair5/pf-user-service:v2
           imagePullPolicy: Always
           env:
             - name: QUARKUS_DATASOURCE_JDBC_URL

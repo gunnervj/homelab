@@ -20,7 +20,7 @@ spec:
         runAsUser: 185
       containers:
         - name: retirement-service
-          image: vnair5/pf-retirement-service:v1
+          image: vnair5/pf-retirement-service:v2
           imagePullPolicy: Always
           env:
             - name: QUARKUS_DATASOURCE_JDBC_URL

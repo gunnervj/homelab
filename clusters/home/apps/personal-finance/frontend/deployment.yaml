@@ -20,7 +20,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: frontend
-          image: vnair5/pf-frontend:v1
+          image: vnair5/pf-frontend:v2
           imagePullPolicy: Always
           env:
             - name: NEXTAUTH_URL
