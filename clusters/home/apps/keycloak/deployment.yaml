@@ -58,7 +58,7 @@ spec:
             - name: KC_HOSTNAME
               value: "auth.naadroid.dev"
             - name: KC_HOSTNAME_ADMIN
-              value: "auth.naadroid.dev"
+              value: "https://auth.naadroid.dev"
             - name: KEYCLOAK_ADMIN
               value: admin
             - name: KEYCLOAK_ADMIN_PASSWORD
