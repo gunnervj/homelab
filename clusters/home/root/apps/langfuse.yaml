@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: langfuse
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  project: default
+  sources:
+    - repoURL: https://langfuse.github.io/langfuse-k8s
+      chart: langfuse
+      targetRevision: 2.1.0
+      helm:
+        valueFiles:
+          - $values/clusters/home/infrastructure/langfuse/values.yaml
+    - repoURL: https://github.com/gunnervj/homelab.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/gunnervj/homelab.git
+      targetRevision: main
+      path: clusters/home/apps/langfuse
+      directory:
+        recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: langfuse
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
