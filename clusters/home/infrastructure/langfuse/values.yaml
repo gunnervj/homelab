@@ -34,7 +34,7 @@ postgresql:
 
 clickhouse:
   deploy: false
-  host: "clickhouse.shared-data.svc.cluster.local"
+  host: "clickhouse-clickhouse-headless.shared-data.svc.cluster.local"
   cluster:
     enabled: false
   auth:
