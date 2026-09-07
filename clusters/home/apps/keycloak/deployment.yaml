@@ -56,9 +56,9 @@ spec:
             - name: KC_HOSTNAME_STRICT
               value: "false"
             - name: KC_HOSTNAME
-              value: ""
+              value: "auth.naadroid.dev"
             - name: KC_HOSTNAME_ADMIN
-              value: ""
+              value: "auth.naadroid.dev"
             - name: KEYCLOAK_ADMIN
               value: admin
             - name: KEYCLOAK_ADMIN_PASSWORD
