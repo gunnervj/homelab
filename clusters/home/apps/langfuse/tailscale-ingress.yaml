@@ -10,6 +10,6 @@ spec:
         - langfuse
   defaultBackend:
     service:
-      name: langfuse
+      name: langfuse-web
       port:
         number: 3000

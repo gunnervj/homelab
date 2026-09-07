@@ -15,5 +15,5 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: langfuse
+        - name: langfuse-web
           port: 3000
