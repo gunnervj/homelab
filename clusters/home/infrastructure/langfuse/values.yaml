@@ -1,4 +1,11 @@
 langfuse:
+  podSecurityContext:
+    runAsUser: 1001
+    fsGroup: 1001
+  securityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+
   nextauth:
     url: "https://langfuse.naadroid.dev"
     secret:
