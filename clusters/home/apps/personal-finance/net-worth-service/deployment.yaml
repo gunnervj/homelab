@@ -39,7 +39,7 @@ spec:
             - name: QUARKUS_OIDC_TOKEN_ISSUER
               value: any
             - name: QUARKUS_HTTP_CORS_ORIGINS
-              value: "https://finance.naadroid.dev"
+              value: "https://fin.naadroid.dev"
             - name: QUARKUS_HTTP_CORS_METHODS
               value: "GET,POST,PUT,DELETE,OPTIONS"
             - name: QUARKUS_HTTP_CORS_HEADERS

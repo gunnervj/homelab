@@ -24,7 +24,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: NEXTAUTH_URL
-              value: "https://finance.naadroid.dev"
+              value: "https://fin.naadroid.dev"
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:

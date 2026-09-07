@@ -31,7 +31,7 @@ spec:
             runAsUser: 100
           env:
             - name: FRONTEND_URL
-              value: "https://finance.naadroid.dev"
+              value: "https://fin.naadroid.dev"
             - name: KEYCLOAK_ADMIN_USER
               value: admin
             - name: KEYCLOAK_ADMIN_PASSWORD
