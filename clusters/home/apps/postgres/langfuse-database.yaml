@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: postgres-langfuse
+  namespace: shared-data
+spec:
+  name: langfuse
+  owner: admin
+  cluster:
+    name: postgres
