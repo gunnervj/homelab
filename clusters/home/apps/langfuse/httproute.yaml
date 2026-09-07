@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: langfuse
+  namespace: langfuse
+spec:
+  parentRefs:
+    - name: homelab-gateway
+      namespace: istio-ingress
+  hostnames:
+    - "langfuse.naadroid.dev"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: langfuse
+          port: 3000
