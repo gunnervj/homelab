@@ -1,0 +1,26 @@
+apiVersion: clickhouse.com/v1alpha1
+kind: KeeperCluster
+metadata:
+  name: clickhouse
+  namespace: shared-data
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  replicas: 1
+  dataVolumeClaimSpec:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: longhorn-bulk
+    resources:
+      requests:
+        storage: 5Gi
+  containerTemplate:
+    image:
+      repository: clickhouse/clickhouse-keeper
+      tag: "26.4"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
